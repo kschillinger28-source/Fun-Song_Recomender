@@ -23,7 +23,14 @@ app.post('/api/search', async (req, res) => {
     if (!track) return res.status(404).json({ error: 'Track not found' });
 
     const recommendations = await getRecommendations(track);
-    res.json({ seedTrack: track, recommendations });
+
+    // Add placeholder background for each recommendation
+    const withBackground = recommendations.map(rec => ({
+      ...rec,
+      background: `A great track by ${rec.artist}`
+    }));
+
+    res.json({ seedTrack: track, recommendations: withBackground });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
