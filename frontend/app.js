@@ -2,10 +2,6 @@
 
 // Must match --swipe-ms in style.css so the card finishes sliding before the next one appears.
 const SWIPE_ANIMATION_MS = 300;
-const SEARCH_DEBOUNCE_MS = 500;  // wait for a pause in typing before searching
-const MIN_SEARCH_LENGTH = 2;
-const MAX_RESULTS = 8;
-const DECK_SIZE = 5;
 const RECENT_LIMIT = 20;         // how many recommended songs to remember this session
 const ITUNES_SEARCH_URL = 'https://itunes.apple.com/search';
 
@@ -71,7 +67,16 @@ const el = {
 
 const player = document.getElementById('player');
 player.loop = true;    // a 30-second preview repeats while you read
-player.volume = 0.7;
+player.volume = Number(player.dataset.volume) || 0.7;
+
+// Settings that live in the HTML as data-* attributes (see index.html), so they
+// can be changed there without touching this file.
+const config = {
+  minSearchLength: Number(el.searchForm.dataset.minLength) || 2,    // letters before we search
+  searchDebounceMs: Number(el.searchForm.dataset.debounceMs) || 500, // pause in typing before we search
+  maxResults: Number(el.searchResults.dataset.maxResults) || 8,
+  deckSize: Number(views.cards.dataset.deckSize) || 5,
+};
 
 // ---------------------------------------------------------------------------
 // State
@@ -80,11 +85,11 @@ const state = {
   seed: null,          // the song the user picked from the search results
   results: [],         // songs currently listed under the search box
   deck: [],            // the five recommended songs
-  index: 0,            // which card is on screen
+  index: Number(views.cards.dataset.index) || 0, // which card is on screen (starts from the HTML)
   isAnimating: false,  // true while a card is sliding off (blocks double swipes)
   saved: [],           // songs the user has saved
   recent: new Set(),   // songs already recommended this session (so repeats feel fresh)
-  musicOn: true,       // false once the user pauses the music themselves
+  musicOn: player.dataset.musicOn !== 'false', // false once the user pauses the music themselves
   searchToken: 0,      // lets us ignore search results that arrive late
 };
 
@@ -265,6 +270,7 @@ function toggleMusic() {
     state.musicOn = false;
     player.pause();
   }
+  player.dataset.musicOn = String(state.musicOn); // attribute update: remember the choice in the HTML
 }
 
 // Make every play/pause button (and the animated bars) match what the player is doing.
@@ -295,17 +301,45 @@ async function runSearch(term) {
   renderSkeleton();
 
   try {
-    const tracks = await searchItunes(term, MAX_RESULTS);
+    const tracks = await searchItunes(term, config.maxResults);
     if (token !== state.searchToken) return; // a newer search replaced this one
     state.results = tracks;
     renderResults();
     setSearchStatus(tracks.length ? 'Pick the song you meant:' : `No songs found for "${term}".`);
   } catch (error) {
     if (token !== state.searchToken) return;
-    state.results = [];
+    // iTunes can't be reached (offline, blocked, or rate-limited): search our own song list instead.
+    state.results = searchCatalog(term);
     renderResults();
-    setSearchStatus('Could not reach iTunes. Check your internet connection and try again.');
+    setSearchStatus(state.results.length
+      ? 'Could not reach iTunes, so these come from the built-in song list (no album art or audio):'
+      : 'Could not reach iTunes, and no song in the built-in list matches. Try another search or check your connection.');
   }
+}
+
+// Fallback search over CATALOG: every word you typed must appear in the song name or artist.
+function searchCatalog(term) {
+  const words = term.toLowerCase().split(/\s+/).filter(Boolean);
+  return CATALOG
+    .filter((song) => {
+      const haystack = `${song.name} ${song.artist}`.toLowerCase();
+      return words.every((word) => haystack.includes(word));
+    })
+    .slice(0, config.maxResults)
+    .map((song) => ({
+      id: `catalog|${song.name}|${song.artist}`,
+      name: song.name,
+      artist: song.artist,
+      album: '',
+      year: String(song.year),
+      genre: song.genre,
+      duration: '',
+      previewUrl: '',
+      artwork: '',
+      thumb: '',
+      blurb: '',
+      reasons: [],
+    }));
 }
 
 function clearResults() {
@@ -382,11 +416,11 @@ function handleSearchInput() {
   clearTimeout(searchTimer);
 
   const term = el.searchInput.value.trim();
-  if (term.length < MIN_SEARCH_LENGTH) {
+  if (term.length < config.minSearchLength) {
     clearResults();
     return;
   }
-  searchTimer = setTimeout(() => runSearch(term), SEARCH_DEBOUNCE_MS);
+  searchTimer = setTimeout(() => runSearch(term), config.searchDebounceMs);
 }
 
 // ---------------------------------------------------------------------------
@@ -530,7 +564,7 @@ async function findSimilar() {
   if (!state.seed) return;
   setFindLoading(true);
 
-  const picks = recommend(state.seed, CATALOG, { recent: state.recent, size: DECK_SIZE });
+  const picks = recommend(state.seed, CATALOG, { recent: state.recent, size: config.deckSize });
   rememberRecommendations(picks);
   state.deck = await Promise.all(picks.map(lookupPick));
 
@@ -640,6 +674,7 @@ function clearPlaylist() {
 
 function updateBadge() {
   el.badge.textContent = state.saved.length;
+  el.navPlaylist.dataset.saved = state.saved.length; // attribute update
   el.badge.classList.add('bump');
   setTimeout(() => el.badge.classList.remove('bump'), 200);
 }

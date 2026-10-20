@@ -23,7 +23,7 @@
       </button>
       <nav class="nav" aria-label="Main">
         <button class="nav-btn is-active" id="nav-search" type="button">Discover</button>
-        <button class="nav-btn" id="nav-playlist" type="button">
+        <button class="nav-btn" id="nav-playlist" type="button" data-saved="0">
           My Playlist <span class="badge" id="playlist-badge">0</span>
         </button>
       </nav>
@@ -44,7 +44,7 @@
         <h2>Find your next favorite song</h2>
         <p>Search for a song you love, confirm the match, then swipe through five recommendations that sound like it.</p>
       </div>
-      <form class="search-form" id="search-form" novalidate>
+      <form class="search-form" id="search-form" data-min-length="2" data-debounce-ms="500" novalidate>
         <span class="icon search-icon" data-icon="search"></span>
         <label class="visually-hidden" for="search-input">Seed song</label>
         <input type="text" id="search-input" placeholder="Search for a song, e.g. Mr. Brightside" autocomplete="off">
@@ -52,7 +52,7 @@
       </form>
       <p class="error" id="search-error" role="alert" hidden>Please type a song name first.</p>
       <p class="search-status" id="search-status" role="status" aria-live="polite"></p>
-      <ul class="results" id="search-results"></ul>
+      <ul class="results" id="search-results" data-max-results="8"></ul>
     </section>
 
     <!-- VIEW 2: details for the song you picked (music plays here) -->
@@ -71,7 +71,7 @@
     </section>
 
     <!-- VIEW 3: the card deck. data-index / data-total hold the deck state. -->
-    <section class="view" id="view-cards" data-index="0" data-total="0" hidden>
+    <section class="view" id="view-cards" data-index="0" data-total="0" data-deck-size="5" hidden>
       <p class="deck-title">Songs like <strong id="seed-title"></strong></p>
 
       <div class="progress">
@@ -132,7 +132,7 @@
   </footer>
 
   <!-- One shared player: it plays the 30-second preview of whichever song is on screen. -->
-  <audio id="player" preload="none"></audio>
+  <audio id="player" preload="none" data-music-on="true" data-volume="0.7"></audio>
 
   <script src="catalog.js"></script>
   <script src="recommender.js"></script>

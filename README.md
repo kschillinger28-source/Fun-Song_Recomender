@@ -1,3 +1,5 @@
+> **Sprint 1 submission:** the interactive frontend prototype is in [`frontend/`](frontend/) (open `frontend/index.html` in a browser), and the report is [`SPRINT1.md`](SPRINT1.md). The React + Express app described below is an earlier, larger version that is planned for later sprints.
+
 # 🎵 Fun Song Recommender
 
 An interactive, Tinder-style song recommendation app that helps music fans discover new tracks based on songs they already love.
