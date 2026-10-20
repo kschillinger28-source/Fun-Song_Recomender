@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0b10">
+  <title>Fun Song Recommender</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236a5af9'/><path d='M17 8v10.6a3.5 3.5 0 1 0 2 3.2V12h4V8z' fill='white'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Decorative background of drifting album covers (filled in by background.js) -->
+  <div class="album-wall" id="album-wall" aria-hidden="true"></div>
+
+  <header class="app-header">
+    <div class="app-header-inner">
+      <button class="brand" id="brand" type="button" aria-label="Fun Song Recommender, go to search">
+        <span class="brand-mark"><span class="icon" data-icon="note"></span></span>
+        <span class="brand-name">Fun Song Recommender</span>
+      </button>
+      <nav class="nav" aria-label="Main">
+        <button class="nav-btn is-active" id="nav-search" type="button">Discover</button>
+        <button class="nav-btn" id="nav-playlist" type="button">
+          My Playlist <span class="badge" id="playlist-badge">0</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <ol class="stepper" id="stepper" aria-label="Progress">
+      <li class="step is-active" aria-current="step"><span class="step-dot">1</span><span class="step-label">Search</span></li>
+      <li class="step"><span class="step-dot">2</span><span class="step-label">Confirm</span></li>
+      <li class="step"><span class="step-dot">3</span><span class="step-label">Discover</span></li>
+    </ol>
+
+    <!-- VIEW 1: search for the seed song, then pick the right match from the list -->
+    <section class="view" id="view-search">
+      <div class="hero">
+        <h2>Find your next favorite song</h2>
+        <p>Search for a song you love, confirm the match, then swipe through five recommendations that sound like it.</p>
+      </div>
+      <form class="search-form" id="search-form" novalidate>
+        <span class="icon search-icon" data-icon="search"></span>
+        <label class="visually-hidden" for="search-input">Seed song</label>
+        <input type="text" id="search-input" placeholder="Search for a song, e.g. Mr. Brightside" autocomplete="off">
+        <button class="btn btn-primary" type="submit">Search</button>
+      </form>
+      <p class="error" id="search-error" role="alert" hidden>Please type a song name first.</p>
+      <p class="search-status" id="search-status" role="status" aria-live="polite"></p>
+      <ul class="results" id="search-results"></ul>
+    </section>
+
+    <!-- VIEW 2: details for the song you picked (music plays here) -->
+    <section class="view" id="view-seed" hidden>
+      <h2 class="view-title">Is this the song you meant?</h2>
+      <div class="card-area" id="seed-area"></div>
+      <div class="controls">
+        <button class="btn btn-secondary" id="btn-seed-back" type="button">
+          <span class="icon" data-icon="back"></span>Back to results
+        </button>
+        <button class="btn btn-primary" id="btn-find" type="button">
+          <span id="find-label">Find similar songs</span><span class="icon" data-icon="forward"></span>
+        </button>
+      </div>
+      <p class="toast" id="seed-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- VIEW 3: the card deck. data-index / data-total hold the deck state. -->
+    <section class="view" id="view-cards" data-index="0" data-total="0" hidden>
+      <p class="deck-title">Songs like <strong id="seed-title"></strong></p>
+
+      <div class="progress">
+        <div class="progress-track" id="progress-track" role="progressbar"
+             aria-valuemin="0" aria-valuemax="5" aria-valuenow="0">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <span class="progress-label" id="progress-label">Card 1 of 5</span>
+      </div>
+
+      <div class="card-area" id="card-area"></div>
+
+      <div class="controls">
+        <button class="btn btn-lg btn-pass" id="btn-pass" type="button">
+          <span class="icon" data-icon="x"></span>Pass
+        </button>
+        <button class="btn btn-lg btn-save" id="btn-save" type="button">
+          <span class="icon" data-icon="heart"></span>Save
+        </button>
+      </div>
+      <p class="hint">Shortcuts: <kbd>←</kbd> pass &nbsp;·&nbsp; <kbd>→</kbd> save</p>
+      <p class="toast" id="toast" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- VIEW 4: finished all cards -->
+    <section class="view view-done" id="view-done" hidden>
+      <span class="done-mark"><span class="icon" data-icon="check"></span></span>
+      <h2>You've seen all five picks</h2>
+      <p>Your playlist now has <strong id="done-count">0</strong> song(s).</p>
+      <div class="controls">
+        <button class="btn btn-primary" id="btn-again" type="button">Search another song</button>
+        <button class="btn btn-secondary" id="btn-view-playlist" type="button">View my playlist</button>
+      </div>
+    </section>
+
+    <!-- VIEW 5: saved songs -->
+    <section class="view" id="view-playlist" hidden>
+      <div class="playlist-header">
+        <div>
+          <h2 class="view-title">My Playlist</h2>
+          <p class="subtle" id="playlist-summary">0 songs saved</p>
+        </div>
+        <button class="btn btn-secondary" id="btn-clear" type="button" disabled>Clear all</button>
+      </div>
+      <div class="empty-state" id="playlist-empty">
+        <span class="empty-mark"><span class="icon" data-icon="note"></span></span>
+        <p>Nothing saved yet.</p>
+        <p class="subtle">Songs you save with the heart button will show up here.</p>
+        <button class="btn btn-primary" id="btn-empty-search" type="button">Find songs</button>
+      </div>
+      <ul class="playlist" id="playlist-list"></ul>
+    </section>
+
+  </main>
+
+  <footer class="app-footer">
+    Sprint 1 prototype &middot; Song info and 30-second previews from the iTunes Search API
+  </footer>
+
+  <!-- One shared player: it plays the 30-second preview of whichever song is on screen. -->
+  <audio id="player" preload="none"></audio>
+
+  <script src="catalog.js"></script>
+  <script src="recommender.js"></script>
+  <script src="app.js"></script>
+  <script src="background.js"></script>
+</body>
+</html>
